@@ -8,6 +8,6 @@
                  [de.active-group/active-clojure "0.42.0"]
                  ;; FIXME: this is probably only expt, remove
                  [org.clojure/math.numeric-tower "0.1.0"]
-                 [de.active-group/active-data "0.1.0-SNAPSHOT"]]
+                 [de.active-group/active-data "0.2.3"]]
 
   :global-vars {*warn-on-reflection* true})
