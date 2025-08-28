@@ -26,7 +26,9 @@
              :refer [make-random-generator random-generator-split]])
   (:require [active.quickcheck2.shrink :as shrink])
   (:require [active.quickcheck2.arbitrary :as arbitrary])
-  (:require [active.quickcheck2.arbitrary-syntax :as arbitrary-syntax])
+  (:require [active.data.realm :as realm])
+  (:require [active.data.realm.inspection :as realm-inspection])
+  (:require [active.quickcheck2.realm :as quickcheck2-realm])
   (:require [clojure.math.numeric-tower :refer [expt]])
   (:use [clojure.test :only [assert-expr do-report]]))
 
@@ -61,7 +63,7 @@ saying whether the property is satisfied."
        (fn [~@ids]
          ~body0 ~@bodies)
        '~ids
-       (list ~@(map (fn [rhs] `(arbitrary-syntax/arbitrary ~rhs)) rhss)))))
+       (list ~@(map (fn [rhs#] `(coerce->generator ~rhs#)) rhss)))))
 
 (def-record ^{:doc "Result from a QuickCheck run."} 
   Check-result-type
@@ -121,9 +123,15 @@ saying whether the property is satisfied."
 (defn coerce->generator
   "Coerce an object to a generator."
   [thing]
-  (if (is-a? arbitrary/Arbitrary-type thing)
+  (cond
+
+    (is-a? arbitrary/Arbitrary-type thing)
     (arbitrary/arbitrary-generator thing)
-    thing))
+
+    (realm-inspection/realm? thing)
+    (arbitrary/arbitrary-generator (quickcheck2-realm/arbitrary thing))
+
+    :else thing))
 
 ; A testable value is one of the following:
 ; - a Property object
