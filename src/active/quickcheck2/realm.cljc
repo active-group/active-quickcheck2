@@ -1,11 +1,14 @@
 (ns active.quickcheck2.realm
-  (:require [active.data.realm :as realm]
-            [active.data.realm.inspection :as realm-inspection]
-            [active.quickcheck2.generator-applicative :as generator-applicative]
-            [active.quickcheck2.generator :as generator]
-            [active.quickcheck2.arbitrary :as arbitrary])
-  #?(:clj (:import (java.lang UnsupportedOperationException)
-                   (java.util UUID))))
+  (:require
+   [active.data.realm :as realm]
+   [active.data.realm.internal.records :as realm-record]
+   [active.data.realm.inspection :as realm-inspection]
+   [active.quickcheck2.arbitrary :as arbitrary]
+   [active.quickcheck2.generator :as generator]
+   [active.quickcheck2.generator-applicative :as generator-applicative])
+  #?(:clj (:import
+           (java.lang UnsupportedOperationException)
+           (java.util UUID))))
 
 (def arbitrary-key ::arbitrary)
 
@@ -42,6 +45,11 @@
         realm/keyword arbitrary/arbitrary-keyword
         realm/boolean arbitrary/arbitrary-boolean
         realm/uuid arbitrary-uuid
+        realm/any arbitrary/arbitrary-any
+        ;; TODO: What other numbers would we like to produce?
+        realm/number (arbitrary/arbitrary-mixed [[integer? arbitrary/arbitrary-integer]
+                                                 [double? arbitrary/arbitrary-float]
+                                                 #?(:clj [#(instance? java.lang.Long %) arbitrary/arbitrary-long])])
 
         (cond
           (realm-inspection/sequence-of? realm)
@@ -56,7 +64,9 @@
                                       [some? (arbitrary (realm-inspection/optional-realm-realm realm))]])
           
           (realm-inspection/union? realm)
-          (arbitrary/generate-one-of (map arbitrary (realm-inspection/union-realm-realms realm)))
+          (arbitrary/arbitrary-mixed (mapv (fn [realm]
+                                             [(realm-inspection/predicate realm) (arbitrary realm)])
+                                           (realm-inspection/union-realm-realms realm)))
           
           (realm-inspection/set-of? realm)
           (arbitrary/arbitrary-set (arbitrary (realm-inspection/set-of-realm-realm realm)))
@@ -73,17 +83,23 @@
           (arbitrary (realm-inspection/named-realm-realm realm))
 
           (realm-inspection/delayed? realm)
-          (arbitrary (realm-inspection/delayed-realm realm))
+          (arbitrary (realm/compile (realm-inspection/delayed-realm realm)))
 
           (realm-inspection/map-of? realm)
           (arbitrary/arbitrary-map (arbitrary (realm-inspection/map-of-realm-key-realm realm))
                                    (arbitrary (realm-inspection/map-of-realm-value-realm realm)))
 
-          (realm-inspection/function? realm)
-          (let [function-cases (realm-inspection/function-realm-cases realm)
-                arbitrary-result (arbitrary (realm-inspection/function-case-return-realm realm))]
-            (arbitrary/arbitrary-function arbitrary-result ))
+          (realm-inspection/map-with-keys realm)
+          (arbitrary/arbitrary-map (arbitrary (realm-inspection/map-of-realm-key-realm realm))
+                                   (arbitrary (realm-inspection/map-of-realm-value-realm realm)))
 
+          (realm-inspection/map-with-tag? realm)
+          (arbitrary/arbitrary-map (arbitrary/arbitrary-one-of = (realm-inspection/map-with-tag-realm-key realm))
+                                   (arbitrary (realm-inspection/map-with-tag-realm-value )))
+          
+          (realm-inspection/function? realm)
+          (throw (unsupported-realm-execption `realm/function))
+          
           ;; TODO
           (realm-inspection/intersection? realm) ; NOTE: `restricted` realms
                                         ; are also intersections.
