@@ -546,12 +546,26 @@
           gen)]
         (monad/return t))))))
 
+(def arbitrary-any
+  "Arbitrary for values of any type."
+  (arbitrary-mixed [[nil? (arbitrary-one-of = nil)]
+                    [keyword? arbitrary-keyword]
+                    [string? arbitrary-string]
+                    [int? arbitrary-int]
+                    [integer? arbitrary-integer]
+                    [boolean? arbitrary-boolean]
+                    [symbol? arbitrary-symbol]
+                    ;; TODO: Arbitraries that expect an element type (such as
+                    ;; set, map, ...).
+                    ]))
+
 (defn symbol->arbitrary
   [sym]
   (cond
     (= sym `integer?) arbitrary-integer
     (= sym `string?) arbitrary-string
-    (= sym `keyword?) arbitrary-keyword))
+    (= sym `keyword?) arbitrary-keyword
+    (= sym `any?) arbitrary-any))
 
 (defn symbol->coarbitrary
   [sym]
@@ -583,4 +597,3 @@
   "Make a coarbitrary from a set (behaviour like enum)"
   [s]
   (apply coarbitrary-one-of (into [identity] s)))
-
