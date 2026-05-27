@@ -32,10 +32,8 @@
     (generator/choose-string generator/choose-alphanumeric-char 10))))
 
 (defn- arbitrary-record [ctor arbitrary-fields]
-  (arbitrary/make-arbitrary
-   (generator-applicative/generator-map
-    (fn [vs] (apply ctor vs))
-    (arbitrary/arbitrary-generator (apply arbitrary/arbitrary-tuple arbitrary-fields)))))
+  ;; Note: arbitrary/arbitrary-record doesn't use of the 'accessors' argument, yet.
+  (apply arbitrary/arbitrary-record ctor nil arbitrary-fields))
 
 (defn- arbitrary-map-with-keys [m]
   (arbitrary-record (fn [& vs]
