@@ -75,6 +75,10 @@
                                     (<= 50 v 100)))))
 
   (t/testing "function"
-    (t/is (check-quick (qc/property [f (realm/function realm/string -> realm/integer)]
-                                    (integer? (f "foo"))))))
-  )
+    (t/is (check-quick (qc/property [a realm/string
+                                     f (realm/function realm/string -> realm/integer)]
+                                    (integer? (f a)))))
+
+    (t/is (check-quick (qc/property [a realm/uuid
+                                     f (realm/function realm/uuid -> realm/integer)]
+                                    (integer? (f a)))))))

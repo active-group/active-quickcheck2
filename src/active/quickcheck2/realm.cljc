@@ -40,9 +40,10 @@
     (generator/choose-string generator/choose-alphanumeric-char 10))))
 
 (def ^:private coarbitrary-uuid
-  ;; TODO
-  nil
-  )
+  ;; No idea if this is a sensible definition
+  (arbitrary/make-coarbitrary
+   (fn [v gen]
+     ((arbitrary/coarbitrary-coarbitrary arbitrary/coarbitrary-string) (str v) gen))))
 
 (defn- arbitrary-map-with-keys [m]
   (apply arbitrary/arbitrary-record (fn [& vs]
