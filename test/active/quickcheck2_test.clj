@@ -1,6 +1,7 @@
 (ns active.quickcheck2-test
   (:require [clojure.test :refer :all]
             [active.clojure.monad :as monad]
+            [active.quickcheck2 :refer :all]
             [active.quickcheck2.generator :as generator]
             [active.quickcheck2.generator-applicative :refer [integrated]]
             [active.quickcheck2.tree :as tree]
@@ -8,8 +9,7 @@
             [active.quickcheck2.generator :refer [generate]]
             [active.quickcheck2.arbitrary :refer [arbitrary-integer arbitrary-natural]]
             [active.data.realm :as realm]
-            [clojure.math.numeric-tower :refer [expt]])
-  (:use active.quickcheck2))
+            [clojure.math.numeric-tower :refer [expt]]))
 
 (defn check-quick
   [prop]
