@@ -24,7 +24,7 @@
 (def ^:private arbitrary-uuid
   (arbitrary/make-arbitrary
    (generator-applicative/generator-map
-    (fn [s]
+    (fn [^String s]
       (let [bytes* #?(:clj  (.getBytes s)
                       :cljs (let [utf8-encode (js/TextEncoder.)]
                               (.encode utf8-encode s)))]
