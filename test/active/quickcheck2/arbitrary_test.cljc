@@ -32,3 +32,7 @@
                                     (arbitrary-list arbitrary-integer))))
     (is (every? list? (gen 100 (arbitrary-list arbitrary-integer))))
     (is (every? (partial every? int?) (gen 100 (arbitrary-list arbitrary-integer))))))
+
+(deftest arbitrary-function-works
+  (doseq [f (gen 10 (arbitrary-function arbitrary-int coarbitrary-string))]
+    (is (int? (f "foo")))))
