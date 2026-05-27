@@ -83,7 +83,7 @@
           (arbitrary (realm-inspection/named-realm-realm realm))
 
           (realm-inspection/delayed? realm)
-          (arbitrary (realm/compile (realm-inspection/delayed-realm realm)))
+          (arbitrary @(realm-inspection/delayed-realm-delay realm))
 
           (realm-inspection/map-of? realm)
           (arbitrary/arbitrary-map (arbitrary (realm-inspection/map-of-realm-key-realm realm))

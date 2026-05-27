@@ -1,5 +1,5 @@
 (ns active.quickcheck2.realm-test
-  (:require [active.data.realm :as realm]
+  (:require [active.data.realm :as realm #?@(:cljs [:include-macros true])]
             [active.quickcheck2 :as qc]
             #?(:clj [clojure.test :as t]
                :cljs [cljs.test :as t :include-macros true])))
@@ -10,6 +10,9 @@
     (true? success)))
 
 (t/deftest arbitrary-test
+  (t/testing "string"
+    (t/is (check-quick (qc/property [s realm/string]
+                                    (string? s)))))
   (t/testing "uuid"
     (t/is (check-quick (qc/property [uuid realm/uuid]
                            (uuid? uuid)))))
@@ -42,11 +45,12 @@
     (t/is (check-quick (qc/property [m (realm/map-of realm/keyword realm/integer)]
                            (and (every? keyword? (keys m))
                                 (every? integer? (vals m)))))))
-  
+  (t/testing "delayed"
+    (t/is (check-quick (qc/property [s (realm/delay realm/string)]
+                                    (string? s)))))
   )
 
 ;; missing
-;; - delayed
 ;; - intersection
 ;; - function
 ;; - any
