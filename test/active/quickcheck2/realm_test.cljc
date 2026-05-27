@@ -45,6 +45,11 @@
     (t/is (check-quick (qc/property [m (realm/map-of realm/keyword realm/integer)]
                            (and (every? keyword? (keys m))
                                 (every? integer? (vals m)))))))
+  (t/testing "map-with-keys"
+    (t/is (check-quick (qc/property [m (realm/map-with-keys {:foo realm/keyword :bar realm/integer})]
+                                    (and (map? m)
+                                         (keyword? (:foo m))
+                                         (integer? (:bar m)))))))
   (t/testing "delayed"
     (t/is (check-quick (qc/property [s (realm/delay realm/string)]
                                     (string? s)))))

@@ -10,7 +10,7 @@
            (java.lang UnsupportedOperationException)
            (java.util UUID))))
 
-(def arbitrary-key ::arbitrary)
+(def ^:private arbitrary-key ::arbitrary)
 
 (defn with-arbitrary
   [realm arbitrary]
@@ -21,7 +21,7 @@
     #?(:clj  (UnsupportedOperationException. message)
        :cljs (js/Error. message))))
 
-(def arbitrary-uuid
+(def ^:private arbitrary-uuid
   (arbitrary/make-arbitrary
    (generator-applicative/generator-map
     (fn [s]
@@ -30,6 +30,14 @@
                               (.encode utf8-encode s)))]
         (UUID/nameUUIDFromBytes bytes*)))
     (generator/choose-string generator/choose-alphanumeric-char 10))))
+
+(defn- arbitrary-map-with-keys [m]
+  (arbitrary/make-arbitrary
+   (generator-applicative/generator-map
+    (fn [vs]
+      (zipmap (keys m) vs))
+    (arbitrary/arbitrary-generator (apply arbitrary/arbitrary-tuple (vals m))))))
+
 
 (defn arbitrary
   [realm]
@@ -89,9 +97,9 @@
           (arbitrary/arbitrary-map (arbitrary (realm-inspection/map-of-realm-key-realm realm))
                                    (arbitrary (realm-inspection/map-of-realm-value-realm realm)))
 
-          (realm-inspection/map-with-keys realm)
-          (arbitrary/arbitrary-map (arbitrary (realm-inspection/map-of-realm-key-realm realm))
-                                   (arbitrary (realm-inspection/map-of-realm-value-realm realm)))
+          (realm-inspection/map-with-keys? realm)
+          (let [m (realm-inspection/map-with-keys-realm-map realm)]
+            (arbitrary-map-with-keys (zipmap (keys m) (map arbitrary (vals m)))))
 
           (realm-inspection/map-with-tag? realm)
           (arbitrary/arbitrary-map (arbitrary/arbitrary-one-of = (realm-inspection/map-with-tag-realm-key realm))
@@ -103,4 +111,7 @@
           ;; TODO
           (realm-inspection/intersection? realm) ; NOTE: `restricted` realms
                                         ; are also intersections.
-          (throw (unsupported-realm-execption `realm/intersection))))))
+          (throw (unsupported-realm-execption `realm/intersection))
+
+          :else
+          (throw (unsupported-realm-execption realm))))))
