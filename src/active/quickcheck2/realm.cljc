@@ -16,7 +16,7 @@
   [realm arbitrary]
   (realm/with-metadata realm arbitrary-key arbitrary))
 
-(defn- unsupported-exception [message]
+(defn- unsupported-exception [^String message]
   #?(:clj  (UnsupportedOperationException. message)
      :cljs (js/Error. message)))
 
