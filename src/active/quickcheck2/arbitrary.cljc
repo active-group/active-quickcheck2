@@ -80,10 +80,10 @@
     (fn [n]
       (generator/choose-integer 0 n)))))
 
-(def coarbitrary-natural
-  "Coarbitrary natural number"
-  (fn [n gen]
-    (generator/variant n gen)))
+(def ^{:doc "Coarbitrary natural number"} coarbitrary-natural
+  (make-coarbitrary
+   (fn [n gen]
+     (generator/variant n gen))))
 
 (defn arbitrary-integer-from-to
   "Arbitrary integer from range."
@@ -96,8 +96,9 @@
 (defn coarbitrary-integer-from-to
   "Coarbitrary integer from range."
   [from to]
-  (fn [n gen]
-      (generator/variant (- n from) gen)))
+  (make-coarbitrary
+   (fn [n gen]
+     (generator/variant (- n from) gen))))
 
 ; TODO can we remove this
 (defn- arbitrary-int-like
