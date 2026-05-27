@@ -7,39 +7,28 @@
 
 (def test-gen (random/make-random-generator 12))
 
-(defn test-generate [m] (generate 5 test-gen m 20))
+(defn test-generate [arb]
+  (generate 5 test-gen (arbitrary-generator arb) 20))
+
+(defn gen [n arb]
+  (take n (tree/to-list (test-generate arb))))
 
 (deftest arbitrary-sequence-like-works
   (testing "arbitrary-sequ-like produces tree of sequence"
     (is (tree/approx-valid-tree? 5 (test-generate
-                                    (arbitrary-generator
-                                     (arbitrary-sequence-like list
-                                                              arbitrary-integer)))))
-    (is (every? list? (take 100 (tree/to-list
-                                 (test-generate
-                                  (arbitrary-generator
-                                   (arbitrary-sequence-like list
-                                                            arbitrary-integer)))))))
+                                    (arbitrary-sequence-like list
+                                                             arbitrary-integer))))
+    (is (every? list? (gen 100 (arbitrary-sequence-like list
+                                                        arbitrary-integer))))
     (is (tree/approx-valid-tree? 5 (test-generate
-                                    (arbitrary-generator
-                                     (arbitrary-sequence-like vec
-                                                              arbitrary-integer)))))
-    (is (every? vector? (take 100 (tree/to-list
-                                   (test-generate
-                                    (arbitrary-generator
-                                     (arbitrary-sequence-like vec
-                                                              arbitrary-integer)))))))))
+                                    (arbitrary-sequence-like vec
+                                                             arbitrary-integer))))
+    (is (every? vector? (gen 100 (arbitrary-sequence-like vec
+                                                          arbitrary-integer))))))
 
 (deftest arbitrary-list-works
   (testing "arbitrary-sequ-like produces tree of sequence"
     (is (tree/approx-valid-tree? 5 (test-generate
-                                    (arbitrary-generator
-                                     (arbitrary-list arbitrary-integer)))))
-    (is (every? list? (take 100 (tree/to-list
-                                 (test-generate
-                                  (arbitrary-generator
-                                   (arbitrary-list arbitrary-integer)))))))
-    (is (every? (partial every? int?) (take 100 (tree/to-list
-                                                 (test-generate
-                                                  (arbitrary-generator
-                                                   (arbitrary-list arbitrary-integer)))))))))
+                                    (arbitrary-list arbitrary-integer))))
+    (is (every? list? (gen 100 (arbitrary-list arbitrary-integer))))
+    (is (every? (partial every? int?) (gen 100 (arbitrary-list arbitrary-integer))))))
