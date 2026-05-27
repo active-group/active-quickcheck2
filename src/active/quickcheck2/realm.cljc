@@ -31,13 +31,16 @@
         (UUID/nameUUIDFromBytes bytes*)))
     (generator/choose-string generator/choose-alphanumeric-char 10))))
 
-(defn- arbitrary-map-with-keys [m]
+(defn- arbitrary-record [ctor arbitrary-fields]
   (arbitrary/make-arbitrary
    (generator-applicative/generator-map
-    (fn [vs]
-      (zipmap (keys m) vs))
-    (arbitrary/arbitrary-generator (apply arbitrary/arbitrary-tuple (vals m))))))
+    (fn [vs] (apply ctor vs))
+    (arbitrary/arbitrary-generator (apply arbitrary/arbitrary-tuple arbitrary-fields)))))
 
+(defn- arbitrary-map-with-keys [m]
+  (arbitrary-record (fn [& vs]
+                      (zipmap (keys m) vs))
+                    (vals m)))
 
 (defn arbitrary
   [realm]
@@ -104,6 +107,10 @@
           (realm-inspection/map-with-tag? realm)
           (arbitrary/arbitrary-map (arbitrary/arbitrary-one-of = (realm-inspection/map-with-tag-realm-key realm))
                                    (arbitrary (realm-inspection/map-with-tag-realm-value )))
+
+          (realm-inspection/record? realm)
+          (arbitrary-record (realm-inspection/record-realm-constructor realm)
+                            (map arbitrary (map realm-inspection/record-realm-field-realm (realm-inspection/record-realm-fields realm))))
           
           (realm-inspection/function? realm)
           (throw (unsupported-realm-execption `realm/function))

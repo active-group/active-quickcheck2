@@ -57,9 +57,16 @@
   (t/testing "delayed"
     (t/is (check-quick (qc/property [s (realm/delay realm/string)]
                                     (string? s)))))
+  (t/testing "record"
+    ;; Note: active.data.records should then work by compiling them to a record realm.
+    (t/is (check-quick (qc/property [v (realm/record 'foo (fn [a b] {:foo {:a a :b b}}) #(and (map? %) (:foo %)) [(realm/field 'a realm/string #(:a (:foo %)))
+                                                                                                                  (realm/field 'b realm/integer #(:b (:foo %)))])]
+                                    (and (map? v)
+                                         (:foo v)
+                                         (string? (:a (:foo v)))
+                                         (integer? (:b (:foo v))))))))
   )
 
 ;; missing
 ;; - intersection
 ;; - function
-;; - any
