@@ -16,10 +16,13 @@
   [realm arbitrary]
   (realm/with-metadata realm arbitrary-key arbitrary))
 
+(defn- unsupported-exception [message]
+  #?(:clj  (UnsupportedOperationException. message)
+     :cljs (js/Error. message)))
+
 (defn- unsupported-realm-execption [realm]
   (let [message (str "arbitrary not implemented for realm " realm)]
-    #?(:clj  (UnsupportedOperationException. message)
-       :cljs (js/Error. message))))
+    (unsupported-exception message)))
 
 (def ^:private arbitrary-uuid
   (arbitrary/make-arbitrary
@@ -74,6 +77,7 @@
           
           (realm-inspection/union? realm)
           (arbitrary/arbitrary-mixed (mapv (fn [realm]
+                                             ;; Note: arbitrary-mixed does not use the predicate yet.
                                              [(realm-inspection/predicate realm) (arbitrary realm)])
                                            (realm-inspection/union-realm-realms realm)))
           
@@ -81,8 +85,6 @@
           (arbitrary/arbitrary-set (arbitrary (realm-inspection/set-of-realm-realm realm)))
           
           (realm-inspection/enum? realm)
-          ;; TODO: Is `=` really enough? There is no explicit constraint on the
-          ;; equality of enum-values in realms, so this might be okay.
           (arbitrary/make-arbitrary (generator/choose-one-of (realm-inspection/enum-realm-values realm)))
 
           (realm-inspection/tuple? realm)
@@ -109,14 +111,35 @@
           (realm-inspection/record? realm)
           (arbitrary-record (realm-inspection/record-realm-constructor realm)
                             (map arbitrary (map realm-inspection/record-realm-field-realm (realm-inspection/record-realm-fields realm))))
+
+          (realm-inspection/intersection? realm)
+          (let [realms (realm-inspection/intersection-realm-realms realm)]
+            ;; for a slight performance inprovement (but a common case via 'realm/restricted'), try to separate from-predicate realms and others:
+            (let [{others false preds true} (group-by (comp boolean realm-inspection/from-predicate?) realms)]
+              (if (empty? others)
+                ;; only predicate realms? This will likely not be able to generate any
+                ;; values (as 'any' cannot generate everything), but we have no chance but to give it a try:
+                (arbitrary/such-that arbitrary/arbitrary-any
+                                     (apply every-pred (concat (map realm-inspection/predicate preds))))
+                ;; use all non-predicate realms 'in turn'; this might lead to slightly
+                ;; better runtime behaviour than using just one as the basis:
+                (arbitrary/such-that (if (empty? (rest others))
+                                       (arbitrary (first others))
+                                       (arbitrary/arbitrary-mixed (into {} (map (fn [realm]
+                                                                                  ;; Note: arbitrary-mixed doesn't actually use the predicate, yet
+                                                                                  [(realm-inspection/predicate realm) (arbitrary realm)])
+                                                                                others))))
+                                     (apply every-pred (concat (map #(fn [v] (realm/contains? % v)) others)
+                                                               (map realm-inspection/predicate preds)))))))
+          
+          (realm-inspection/from-predicate? realm)
+          ;; This will likely not be able to generate any values (as 'any' cannot generate
+          ;; everything), but we have no chance but to give it a try:
+          (arbitrary/such-that arbitrary/arbitrary-any (realm-inspection/predicate realm))
           
           (realm-inspection/function? realm)
+          ;; ...this'll need coarbitraries for everything, doesn't it?
           (throw (unsupported-realm-execption `realm/function))
           
-          ;; TODO
-          (realm-inspection/intersection? realm) ; NOTE: `restricted` realms
-                                        ; are also intersections.
-          (throw (unsupported-realm-execption `realm/intersection))
-
           :else
           (throw (unsupported-realm-execption realm))))))

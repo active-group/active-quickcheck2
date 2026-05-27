@@ -65,6 +65,14 @@
                                          (:foo v)
                                          (string? (:a (:foo v)))
                                          (integer? (:b (:foo v))))))))
+
+  (t/testing "restricted"
+    ;; Note: a special case of intersection
+    (t/is (check-quick (qc/property [v (realm/restricted realm/integer even? "Even numbers")]
+                                    (even? v)))))
+  (t/testing "intersection"
+    (t/is (check-quick (qc/property [v (realm/intersection (realm/integer-from-to 0 100) (realm/integer-from-to 50 150))]
+                                    (<= 50 v 100)))))
   )
 
 ;; missing
