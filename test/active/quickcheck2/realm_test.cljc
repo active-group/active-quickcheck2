@@ -13,6 +13,10 @@
   (t/testing "string"
     (t/is (check-quick (qc/property [s realm/string]
                                     (string? s)))))
+  (t/testing "any"
+    (t/is (check-quick (qc/property [_ realm/any]
+                                    ;; not much to test here, or is it?
+                                    true))))
   (t/testing "uuid"
     (t/is (check-quick (qc/property [uuid realm/uuid]
                            (uuid? uuid)))))
