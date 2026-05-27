@@ -12,9 +12,13 @@
 
 (def ^:private arbitrary-key ::arbitrary)
 
+(def ^:private coarbitrary-key ::coarbitrary)
+
 (defn with-arbitrary
-  [realm arbitrary]
-  (realm/with-metadata realm arbitrary-key arbitrary))
+  [realm arbitrary & [coarbitrary]]
+  (cond-> realm
+    true (realm/with-metadata arbitrary-key arbitrary)
+    (some? coarbitrary) (realm/with-metadata coarbitrary-key coarbitrary)))
 
 (defn- unsupported-exception [^String message]
   #?(:clj  (UnsupportedOperationException. message)
@@ -24,6 +28,7 @@
   (let [message (str "arbitrary not implemented for realm " realm)]
     (unsupported-exception message)))
 
+;; TODO: move to arbitrary.cljc
 (def ^:private arbitrary-uuid
   (arbitrary/make-arbitrary
    (generator-applicative/generator-map
@@ -34,14 +39,24 @@
         (UUID/nameUUIDFromBytes bytes*)))
     (generator/choose-string generator/choose-alphanumeric-char 10))))
 
-(defn- arbitrary-record [ctor arbitrary-fields]
-  ;; Note: arbitrary/arbitrary-record doesn't use of the 'accessors' argument, yet.
-  (apply arbitrary/arbitrary-record ctor nil arbitrary-fields))
+(def ^:private coarbitrary-uuid
+  ;; TODO
+  nil
+  )
 
 (defn- arbitrary-map-with-keys [m]
-  (arbitrary-record (fn [& vs]
-                      (zipmap (keys m) vs))
-                    (vals m)))
+  (apply arbitrary/arbitrary-record (fn [& vs]
+                                      (zipmap (keys m) vs))
+         (keys m)
+         (vals m)))
+
+(defn- coarbitrary-map-with-keys [m]
+  (apply arbitrary/coarbitrary-record (fn [& vs]
+                                        (zipmap (keys m) vs))
+         (keys m)
+         (vals m)))
+
+(declare coarbitrary)
 
 (defn arbitrary
   [realm]
@@ -58,7 +73,6 @@
         realm/boolean arbitrary/arbitrary-boolean
         realm/uuid arbitrary-uuid
         realm/any arbitrary/arbitrary-any
-        ;; TODO: What other numbers would we like to produce?
         realm/number (arbitrary/arbitrary-mixed [[integer? arbitrary/arbitrary-integer]
                                                  [double? arbitrary/arbitrary-float]
                                                  #?(:clj [#(instance? java.lang.Long %) arbitrary/arbitrary-long])])
@@ -85,7 +99,7 @@
           (arbitrary/arbitrary-set (arbitrary (realm-inspection/set-of-realm-realm realm)))
           
           (realm-inspection/enum? realm)
-          (arbitrary/make-arbitrary (generator/choose-one-of (realm-inspection/enum-realm-values realm)))
+          (arbitrary/arbitrary-one-of = (realm-inspection/enum-realm-values realm))
 
           (realm-inspection/tuple? realm)
           (apply arbitrary/arbitrary-tuple (map arbitrary (realm-inspection/tuple-realm-realms realm)))
@@ -109,8 +123,9 @@
                                    (arbitrary (realm-inspection/map-with-tag-realm-value )))
 
           (realm-inspection/record? realm)
-          (arbitrary-record (realm-inspection/record-realm-constructor realm)
-                            (map arbitrary (map realm-inspection/record-realm-field-realm (realm-inspection/record-realm-fields realm))))
+          (apply arbitrary/arbitrary-record (realm-inspection/record-realm-constructor realm)
+                 (map realm-inspection/record-realm-field-getter (realm-inspection/record-realm-fields realm))
+                 (map arbitrary (map realm-inspection/record-realm-field-realm (realm-inspection/record-realm-fields realm))))
 
           (realm-inspection/intersection? realm)
           (let [realms (realm-inspection/intersection-realm-realms realm)]
@@ -138,8 +153,119 @@
           (arbitrary/such-that arbitrary/arbitrary-any (realm-inspection/predicate realm))
           
           (realm-inspection/function? realm)
-          ;; ...this'll need coarbitraries for everything, doesn't it?
-          (throw (unsupported-realm-execption `realm/function))
+          (if (> (count (realm-inspection/function-realm-cases realm)) 1)
+            (throw (unsupported-exception "Arbitrary functions with multiple cases are not supported yet."))
+            (let [c (first (realm-inspection/function-realm-cases realm))]
+              (if (some? (realm-inspection/function-case-optional-arguments-realm c))
+                (throw (unsupported-exception "Arbitrary functions with optional arguments are not supported yet."))
+                (apply arbitrary/arbitrary-function (arbitrary (realm-inspection/function-case-return-realm c))
+                       (map coarbitrary (realm-inspection/function-case-positional-argument-realms c))))))
+          
+          :else
+          (throw (unsupported-realm-execption realm))))))
+
+(defn coarbitrary
+  [realm]
+  (or (get (realm-inspection/metadata realm) coarbitrary-key)
+      (condp = realm
+        realm/natural arbitrary/coarbitrary-natural
+        realm/integer arbitrary/coarbitrary-integer
+        realm/rational arbitrary/coarbitrary-rational
+        realm/real arbitrary/coarbitrary-float
+        realm/char arbitrary/coarbitrary-char
+        realm/string arbitrary/coarbitrary-string
+        realm/symbol arbitrary/coarbitrary-symbol
+        realm/keyword arbitrary/coarbitrary-keyword
+        realm/boolean arbitrary/coarbitrary-boolean
+        realm/uuid coarbitrary-uuid
+        realm/any arbitrary/coarbitrary-any
+        realm/number (arbitrary/coarbitrary-mixed [[integer? arbitrary/coarbitrary-integer]
+                                                   [double? arbitrary/coarbitrary-float]
+                                                   #?(:clj [#(instance? java.lang.Long %) arbitrary/coarbitrary-long])])
+
+        (cond
+          (realm-inspection/sequence-of? realm)
+          (arbitrary/coarbitrary-list (coarbitrary (realm-inspection/sequence-of-realm-realm realm)))
+
+          (realm-inspection/integer-from-to? realm)
+          (arbitrary/coarbitrary-integer-from-to (realm-inspection/integer-from-to-realm-from realm)
+                                                 (realm-inspection/integer-from-to-realm-to realm))
+
+          (realm-inspection/optional? realm)
+          (arbitrary/coarbitrary-mixed [[nil? (arbitrary/coarbitrary-one-of = nil)]
+                                        [some? (coarbitrary (realm-inspection/optional-realm-realm realm))]])
+          
+          (realm-inspection/union? realm)
+          (arbitrary/coarbitrary-mixed (mapv (fn [realm]
+                                               [(realm-inspection/predicate realm) (coarbitrary realm)])
+                                             (realm-inspection/union-realm-realms realm)))
+          
+          (realm-inspection/set-of? realm)
+          (arbitrary/coarbitrary-set (coarbitrary (realm-inspection/set-of-realm-realm realm)))
+          
+          (realm-inspection/enum? realm)
+          (arbitrary/coarbitrary-one-of (realm-inspection/enum-realm-values realm))
+
+          (realm-inspection/tuple? realm)
+          (apply arbitrary/coarbitrary-tuple (map coarbitrary (realm-inspection/tuple-realm-realms realm)))
+
+          (realm-inspection/named? realm)
+          (coarbitrary (realm-inspection/named-realm-realm realm))
+
+          (realm-inspection/delayed? realm)
+          (coarbitrary @(realm-inspection/delayed-realm-delay realm))
+
+          (realm-inspection/map-of? realm)
+          (arbitrary/coarbitrary-map (coarbitrary (realm-inspection/map-of-realm-key-realm realm))
+                                     (coarbitrary (realm-inspection/map-of-realm-value-realm realm)))
+
+          (realm-inspection/map-with-keys? realm)
+          (let [m (realm-inspection/map-with-keys-realm-map realm)]
+            (coarbitrary-map-with-keys (zipmap (keys m) (map coarbitrary (vals m)))))
+
+          (realm-inspection/map-with-tag? realm)
+          (arbitrary/coarbitrary-map (arbitrary/coarbitrary-one-of = (realm-inspection/map-with-tag-realm-key realm))
+                                     (coarbitrary (realm-inspection/map-with-tag-realm-value )))
+
+          (realm-inspection/record? realm)
+          (apply arbitrary/coarbitrary-record (realm-inspection/record-realm-constructor realm)
+                 (map realm-inspection/record-realm-field-getter (realm-inspection/record-realm-fields realm))
+                 (map coarbitrary (map realm-inspection/record-realm-field-realm (realm-inspection/record-realm-fields realm))))
+
+          (realm-inspection/intersection? realm)
+          (throw (unsupported-realm-execption `realm/intersection))
+          ;; TODO: co-such-that or what?
+          #_(let [realms (realm-inspection/intersection-realm-realms realm)]
+              ;; for a slight performance inprovement (but a common case via 'realm/restricted'), try to separate from-predicate realms and others:
+              (let [{others false preds true} (group-by (comp boolean realm-inspection/from-predicate?) realms)]
+                (if (empty? others)
+                  ;; only predicate realms? This will likely not be able to generate any
+                  ;; values (as 'any' cannot generate everything), but we have no chance but to give it a try:
+                  (arbitrary/co-such-that arbitrary/coarbitrary-any
+                                          (apply every-pred (concat (map realm-inspection/predicate preds))))
+                  ;; use all non-predicate realms 'in turn'; this might lead to slightly
+                  ;; better runtime behaviour than using just one as the basis:
+                  (arbitrary/co-such-that (if (empty? (rest others))
+                                            (coarbitrary (first others))
+                                            (arbitrary/coarbitrary-mixed (into {} (map (fn [realm]
+                                                                                         [(realm-inspection/predicate realm) (coarbitrary realm)])
+                                                                                       others))))
+                                          (apply every-pred (concat (map #(fn [v] (realm/contains? % v)) others)
+                                                                    (map realm-inspection/predicate preds)))))))
+          
+          (realm-inspection/from-predicate? realm)
+          ;; This will likely not be able to generate any values (as 'any' cannot generate
+          ;; everything), but we have no chance but to give it a try:
+          (arbitrary/such-that arbitrary/coarbitrary-any (realm-inspection/predicate realm))
+          
+          (realm-inspection/function? realm)
+          (if (> (count (realm-inspection/function-realm-cases realm)) 1)
+            (throw (unsupported-exception "Coarbitrary functions with multiple cases are not supported yet."))
+            (let [c (first (realm-inspection/function-realm-cases realm))]
+              (if (some? (realm-inspection/function-case-optional-arguments-realm c))
+                (throw (unsupported-exception "Coarbitrary functions with optional arguments are not supported yet."))
+                (apply arbitrary/coarbitrary-function (coarbitrary (realm-inspection/function-case-return-realm c))
+                       (map arbitrary (realm-inspection/function-case-positional-argument-realms c))))))
           
           :else
           (throw (unsupported-realm-execption realm))))))

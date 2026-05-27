@@ -559,6 +559,18 @@
                     ;; set, map, ...).
                     ]))
 
+(def coarbitrary-any
+  "Coarbitrary for values of any type."
+  (coarbitrary-mixed [[nil? (coarbitrary-one-of = nil)]
+                      [keyword? coarbitrary-keyword]
+                      [string? coarbitrary-string]
+                      [int? coarbitrary-int]
+                      [integer? coarbitrary-integer]
+                      [boolean? coarbitrary-boolean]
+                      [symbol? coarbitrary-symbol]
+                      ;; more?
+                      ]))
+
 (defn symbol->arbitrary
   [sym]
   (cond

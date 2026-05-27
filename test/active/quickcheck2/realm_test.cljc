@@ -73,8 +73,8 @@
   (t/testing "intersection"
     (t/is (check-quick (qc/property [v (realm/intersection (realm/integer-from-to 0 100) (realm/integer-from-to 50 150))]
                                     (<= 50 v 100)))))
-  )
 
-;; missing
-;; - intersection
-;; - function
+  (t/testing "function"
+    (t/is (check-quick (qc/property [f (realm/function realm/string -> realm/integer)]
+                                    (integer? (f "foo"))))))
+  )
