@@ -6,7 +6,9 @@
   (:require [active.quickcheck2.generator-applicative :refer [with-tree
                                                               combine-generators]])
   (:require [clojure.math.numeric-tower :refer [expt]])
-  )
+  (:require [active.quickcheck2.generator-applicative :as generator-applicative])
+  #?(:clj (:import
+           (java.util UUID))))
 
 (def-record ^{:doc "Generalization of generator, suitable for producing function generators."}
   Arbitrary-type
@@ -520,6 +522,23 @@
 (def coarbitrary-keyword
   "Coarbitrary keyword."
   (coarbitrary-symbol-like generator/choose-keyword))
+
+(def arbitrary-uuid
+  (make-arbitrary
+   (generator-applicative/generator-map
+    (fn [^String s]
+      (let [bytes* #?(:clj  (.getBytes s)
+                      :cljs (let [utf8-encode (js/TextEncoder.)]
+                              (.encode utf8-encode s)))]
+        (UUID/nameUUIDFromBytes bytes*)))
+    (generator/choose-string generator/choose-alphanumeric-char 10))))
+
+(def coarbitrary-uuid
+  ;; No idea if this is a sensible definition
+  (make-coarbitrary
+   (fn [v gen]
+     ((coarbitrary-coarbitrary coarbitrary-string) (str v) gen))))
+
 
 (defn arbitrary-function
   "Arbitrary function."

@@ -28,23 +28,6 @@
   (let [message (str "arbitrary not implemented for realm " realm)]
     (unsupported-exception message)))
 
-;; TODO: move to arbitrary.cljc
-(def ^:private arbitrary-uuid
-  (arbitrary/make-arbitrary
-   (generator-applicative/generator-map
-    (fn [^String s]
-      (let [bytes* #?(:clj  (.getBytes s)
-                      :cljs (let [utf8-encode (js/TextEncoder.)]
-                              (.encode utf8-encode s)))]
-        (UUID/nameUUIDFromBytes bytes*)))
-    (generator/choose-string generator/choose-alphanumeric-char 10))))
-
-(def ^:private coarbitrary-uuid
-  ;; No idea if this is a sensible definition
-  (arbitrary/make-coarbitrary
-   (fn [v gen]
-     ((arbitrary/coarbitrary-coarbitrary arbitrary/coarbitrary-string) (str v) gen))))
-
 (defn- arbitrary-map-with-keys [m]
   (apply arbitrary/arbitrary-record (fn [& vs]
                                       (zipmap (keys m) vs))
@@ -72,7 +55,7 @@
         realm/symbol arbitrary/arbitrary-symbol
         realm/keyword arbitrary/arbitrary-keyword
         realm/boolean arbitrary/arbitrary-boolean
-        realm/uuid arbitrary-uuid
+        realm/uuid arbitrary/arbitrary-uuid
         realm/any arbitrary/arbitrary-any
         realm/number (arbitrary/arbitrary-mixed [[integer? arbitrary/arbitrary-integer]
                                                  [double? arbitrary/arbitrary-float]
@@ -178,7 +161,7 @@
         realm/symbol arbitrary/coarbitrary-symbol
         realm/keyword arbitrary/coarbitrary-keyword
         realm/boolean arbitrary/coarbitrary-boolean
-        realm/uuid coarbitrary-uuid
+        realm/uuid arbitrary/coarbitrary-uuid
         realm/any arbitrary/coarbitrary-any
         realm/number (arbitrary/coarbitrary-mixed [[integer? arbitrary/coarbitrary-integer]
                                                    [double? arbitrary/coarbitrary-float]
