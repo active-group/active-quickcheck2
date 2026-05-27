@@ -416,7 +416,8 @@
 (defn arbitrary-map
   "Arbitrary map over the given arbitrary key and value."
   [arbitrary-key arbitrary-value]
-  (arbitrary-sequence-like generator/map-of-tuples (arbitrary-tuple arbitrary-key arbitrary-value)))
+  ;; TODO: should this generate unique keys, maybe?
+  (arbitrary-sequence-like (partial into {}) (arbitrary-tuple arbitrary-key arbitrary-value)))
 
 (defn coarbitrary-map
   "coarbitrary map over the given arbitrary key and value."

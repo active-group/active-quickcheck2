@@ -414,18 +414,12 @@
   [el-gen lower upper]
   (combine-generators byte-array (choose-sequence-like-in-range el-gen lower upper)))
 
-(defn map-of-tuples
-  [tups]
-  (reduce (fn [m [k v]] (assoc m k v)) {} tups))
-
-; TODO map-of-tuples doesn't preserve length. Maybe change this
-#_(map-of-tuples [['a 1] ['a 2]])
-
 (defn choose-map
   "Generator for a map with size n. The passed element generator must
   generate key-value pairs."
   [el-gen n]
-  (combine-generators map-of-tuples (choose-list el-gen n)))
+  ;; TODO: should this generate unique keys, maybe?
+  (combine-generators (partial into {}) (choose-list el-gen n)))
 
 (defn choose-set
   "Generator for a set with size <= n"
