@@ -235,7 +235,7 @@
 (def-record ^{:doc "If the generator contains a tree, use it"}
   Maybe-with-tree-type
   [maybe-get-tree])
-(defn maybe-with-tree [get-tree] (maybe-with-tree maybe-get-tree get-tree))
+(defn maybe-with-tree [get-tree] (Maybe-with-tree-type maybe-get-tree get-tree))
 (defn maybe-with-tree? [x] (is-a? Maybe-with-tree-type x))
 
 (def-record ^{:doc "Get the maximal depth for the shrinking function"}

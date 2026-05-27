@@ -64,9 +64,10 @@
     (is (tree/approx-valid-tree? 5 (test-generate (choose-symbol 2))))
     (is (every? symbol? (take 100 (tree/to-list (test-generate (choose-symbol 2))))))))
 
-
-
-
-
-
-
+(deftest such-that-works
+  (testing "such-that-generator works"
+    (is (every? even? (take 100 (tree/to-list (test-generate (such-that-generator choose-int even?)))))))
+  (testing "such-that-maybe"
+    ;; Note: actually not sure how such-that-maybe is supposed to work
+    (is (nil? (test-generate (such-that-maybe choose-int #(= "foo" %)))))
+    #_(is (empty? (take 1 (tree/to-list (test-generate (such-that-maybe choose-int #(= "foo" %)))))))))
