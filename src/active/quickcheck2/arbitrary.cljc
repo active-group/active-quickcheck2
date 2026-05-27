@@ -1,12 +1,13 @@
 (ns active.quickcheck2.arbitrary
-  (:require #?(:clj [active.data.record :refer [def-record is-a?]]
-               :cljs [active.data.record :refer [is-a?] :refer-macros [def-record]]))
-  (:require [active.quickcheck2.generator :as generator])
-  (:require [active.clojure.monad :as monad])
-  (:require [active.quickcheck2.generator-applicative :refer [with-tree
-                                                              combine-generators]])
-  (:require [clojure.math.numeric-tower :refer [expt]])
-  (:require [active.quickcheck2.generator-applicative :as generator-applicative])
+  (:require
+   #?(:clj [active.data.record :refer [def-record is-a?]]
+      :cljs [active.data.record :refer [is-a?] :refer-macros [def-record]])
+   [active.quickcheck2.generator :as generator]
+   [active.clojure.monad :as monad]
+   [active.quickcheck2.generator-applicative :refer [with-tree
+                                                     combine-generators]]
+   [clojure.math.numeric-tower :refer [expt]]
+   [active.quickcheck2.generator-applicative :as generator-applicative])
   #?(:clj (:import
            (java.util UUID))))
 
@@ -45,18 +46,15 @@
 ;; -----------
 
 (def arbitrary-boolean
-  "Arbitrary boolean."
   (make-arbitrary
     (generator/choose-one-of '(true false))))
 
 (def coarbitrary-boolean
-  "Coarbitrary boolean"
   (make-coarbitrary
    (fn [a gen]
      (generator/variant (if a 0 1) gen))))
 
 (def arbitrary-integer
-  "Arbitrary integer."
   (make-arbitrary
    (generator/sized
     (fn [n]
@@ -65,7 +63,6 @@
         (generator/choose-integer lo hi))))))
 
 (def coarbitrary-integer
-  "Arbitrary integer."
   (make-coarbitrary
     (fn [n gen]
       (generator/variant (if (>= n 0)
@@ -73,8 +70,7 @@
                            (+ (* 2 (- n)) 1))
         gen))))
 
-(def arbitrary-natural
-  "Arbitrary natural number."
+(def ^{:doc "Arbitrary natural number."} arbitrary-natural
   (make-arbitrary
    (generator/sized
     (fn [n]
@@ -86,7 +82,7 @@
      (generator/variant n gen))))
 
 (defn arbitrary-integer-from-to
-  "Arbitrary integer from range."
+  "Arbitrary integer between `from` and `to`, both inclusive."
   [from to]
   (make-arbitrary
    (generator/sized
@@ -94,13 +90,12 @@
       (generator/choose-integer from to)))))
 
 (defn coarbitrary-integer-from-to
-  "Coarbitrary integer from range."
+  "Coarbitrary integer between `from` and `to`, both inclusive."
   [from to]
   (make-coarbitrary
    (fn [n gen]
      (generator/variant (- n from) gen))))
 
-; TODO can we remove this
 (defn- arbitrary-int-like
   [gen to-int]
   (make-arbitrary 
@@ -112,102 +107,78 @@
                       (generator/variant (to-int v) rgen))))
 
 (def arbitrary-byte
-  "Arbitrary byte."
   (arbitrary-int-like generator/choose-byte byte))
 
 (def coarbitrary-byte
-  "Coarbitrary byte."
   (coarbitrary-int-like generator/choose-byte byte))
 
 (def arbitrary-short
-  "Arbitrary short."
   (arbitrary-int-like generator/choose-short short))
 
 (def coarbitrary-short
-  "Coarbitrary short."
   (coarbitrary-int-like generator/choose-short short))
 
 (def arbitrary-int
-  "Arbitrary int."
   (arbitrary-int-like generator/choose-int int))
 
 (def coarbitrary-int
-  "Coarbitrary int."
   (coarbitrary-int-like generator/choose-int int))
 
 (def arbitrary-long
-  "Arbitrary long."
   (arbitrary-int-like generator/choose-long long))
 
 (def coarbitrary-long
-  "Coarbitrary long."
   (coarbitrary-int-like generator/choose-long long))
 
 (def arbitrary-unsigned-byte
-  "Arbitrary unsigned byte."
   (arbitrary-int-like generator/choose-unsigned-byte short))
 
 (def coarbitrary-unsigned-byte
-  "Coarbitrary unsigned byte."
   (coarbitrary-int-like generator/choose-unsigned-byte short))
 
 (def arbitrary-unsigned-short
-  "Arbitrary unsigned short."
   (arbitrary-int-like generator/choose-unsigned-short int))
 
 (def coarbitrary-unsigned-short
-  "Coarbitrary unsigned short."
   (coarbitrary-int-like generator/choose-unsigned-short int))
 
 (def arbitrary-unsigned-int
-  "Arbitrary unsigned int."
   (arbitrary-int-like generator/choose-unsigned-int long))
 
 (def coarbitrary-unsigned-int
-  "Coarbitrary unsigned int."
   (coarbitrary-int-like generator/choose-unsigned-int long))
 
 (def arbitrary-unsigned-long
-  "Arbitrary unsigned long."
   (arbitrary-int-like generator/choose-unsigned-long bigint))
 
 (def coarbitrary-unsigned-long
-  "Coarbitrary unsigned long."
   (coarbitrary-int-like generator/choose-unsigned-long bigint))
 
 (def arbitrary-ascii-char
-  "Arbitrary ASCII character."
   (arbitrary-int-like generator/choose-ascii-char int))
 
 (def coarbitrary-ascii-char
-  "Coarbitrary ASCII character."
   (coarbitrary-int-like generator/choose-ascii-char int))
 
 (def arbitrary-ascii-letter
-  "Arbitrary ASCII letter."
   (arbitrary-int-like generator/choose-ascii-letter int))
 
 (def coarbitrary-ascii-letter
-  "Coarbitrary ASCII letter."
   (coarbitrary-int-like generator/choose-ascii-letter int))
 
 (def arbitrary-printable-ascii-char
-  "Arbitrary printable ASCII character."
   (arbitrary-int-like generator/choose-printable-ascii-char int))
 
 (def coarbitrary-printable-ascii-char
-  "Coarbitrary printable ASCII character."
   (coarbitrary-int-like generator/choose-printable-ascii-char int))
 
 (def arbitrary-char
-  "Arbitrary char."
   (arbitrary-int-like (generator/sized
                        (fn [n]
                          (generator/choose-char \u0000 (char (min n 0xffff)))))
                       int))
 
 (def coarbitrary-char
-  "Coarbitrary char."
   (coarbitrary-int-like (generator/sized
                          (fn [n]
                            (generator/choose-char \u0000 (char (min n 0xffff)))))
@@ -218,21 +189,21 @@
   (/ a
     (+ 1 b)))
 
-(def arbitrary-rational
-  "Arbitrary rational number."
-  (make-arbitrary
-    (combine-generators make-rational
-      (arbitrary-generator arbitrary-integer)
-      (arbitrary-generator arbitrary-natural))))
+#?(:clj
+   (def arbitrary-rational
+     (make-arbitrary
+      (combine-generators make-rational
+                          (arbitrary-generator arbitrary-integer)
+                          (arbitrary-generator arbitrary-natural)))))
 
-(def coarbitrary-rational
-  "Coarbitrary rational number."
-  (make-coarbitrary
-   (fn [^clojure.lang.Ratio r gen]
-     ((coarbitrary-coarbitrary coarbitrary-integer)
-      (.numerator r)
-      ((coarbitrary-coarbitrary coarbitrary-integer)
-       (.denominator r) gen)))))
+#?(:clj
+   (def coarbitrary-rational
+     (make-coarbitrary
+      (fn [^clojure.lang.Ratio r gen]
+        ((coarbitrary-coarbitrary coarbitrary-integer)
+         (.numerator r)
+         ((coarbitrary-coarbitrary coarbitrary-integer)
+          (.denominator r) gen))))))
 
 (defn- fraction
   [a b c]
@@ -241,7 +212,6 @@
              (+ (abs c) 1)))))
 
 (def arbitrary-float
-  "Arbitrary float."
   (make-arbitrary
    (combine-generators fraction
                        (arbitrary-generator arbitrary-integer)
@@ -249,7 +219,6 @@
                        (arbitrary-generator arbitrary-integer))))
 
 (def coarbitrary-float
-  "Coarbitrary float."
   (make-coarbitrary
    (fn [r gen]
      (let [^clojure.lang.Ratio fr (rationalize r)]
@@ -304,6 +273,7 @@
       (map arbitrary-generator arbitrary-els))))
 
 (defn coarbitrary-tuple
+  "Coarbitrary fixed-size vector."
   [& coarbitrary-els]
   (make-coarbitrary
    (fn [lis gen]
@@ -365,6 +335,7 @@
 (defn coarbitrary-coll-of
   "Coarbitrary collection mimicking Clojure spec's coll-of"
   [arbitrary-el & kwargs]
+  ;; TODO
   :not-supported-yet)
 
 (defn arbitrary-sequence-like
@@ -377,7 +348,7 @@
                             (generator/choose-sequence-like-in-range (arbitrary-generator arbitrary-el) 0 n))))))
 
 (defn arbitrary-sequence-like-in-range
-  "Arbitrary sequence-like container."
+  "Arbitrary sequence-like container, with a size between `lower` and `upper`, both inclusive."
   [list->sequence arbitrary-el lower upper]
   (make-arbitrary
    (generator/sized
@@ -453,48 +424,41 @@
   (coarbitrary-sequence-like generator/choose-map #(into () %) (coarbitrary-tuple coarbitrary-key coarbitrary-value)))
 
 (defn arbitrary-set
-  "Arbitrary set."
   [arbitrary-el]
   (arbitrary-sequence-like set arbitrary-el))
 
 (defn coarbitrary-set
-  "Coarbitrary set."
   [coarbitrary-el]
   (coarbitrary-sequence-like generator/choose-set #(into () %) coarbitrary-el))
 
 (def arbitrary-ascii-string
-  "Arbitrary string of ASCII characters."
   (arbitrary-sequence-like #(apply str %) arbitrary-ascii-char))
 
 (defn arbitrary-ascii-string-in-range
-  "Arbitrary string of ASCII characters in range (lower,upper)."
+  "Arbitrary string of ASCII characters of a length between `lower` and `upper`, both inclusive."
   [lower upper]
   (arbitrary-sequence-like-in-range #(apply str %) arbitrary-ascii-char lower upper))
 
 (def coarbitrary-ascii-string
-  "Coarbitrary string of ASCII characters."
   (coarbitrary-sequence-like #(apply str %) #(into () %) coarbitrary-ascii-char))
 
 (def arbitrary-printable-ascii-string
-  "Arbitrary string of printable ASCII characters."
   (arbitrary-sequence-like #(apply str %) arbitrary-printable-ascii-char))
 
 (defn arbitrary-printable-ascii-string-in-range
-  "Arbitrary string of printable ASCII characters in range (lower,upper)."
+  "Arbitrary string of printable ASCII characters of a length between `lower` and `upper`, both inclusive."
   [lower upper]
   (arbitrary-sequence-like-in-range #(apply str %) arbitrary-printable-ascii-char lower upper))
 
 (def arbitrary-string
-  "Arbitrary string."
   (arbitrary-sequence-like #(apply str %) arbitrary-char))
 
 (defn arbitrary-string-in-range
-  "Arbitrary string in range (lower,upper)."
+  "Arbitrary string of a length between `lower` and `upper`, both inclusive."
   [lower upper]
   (arbitrary-sequence-like-in-range #(apply str %) arbitrary-char lower upper))
 
 (def coarbitrary-string
-  "Coarbitrary string."
   (coarbitrary-sequence-like #(apply str %) #(into () %) coarbitrary-char))
 
 (defn- arbitrary-symbol-like
@@ -509,19 +473,15 @@
       ((coarbitrary-coarbitrary coarbitrary-string) (name v) gen))))
 
 (def arbitrary-symbol
-  "Arbitrary symbol."
   (arbitrary-symbol-like generator/choose-symbol))
 
 (def coarbitrary-symbol
-  "Coarbitrary symbol."
   (coarbitrary-symbol-like generator/choose-symbol))
 
 (def arbitrary-keyword
-  "Arbitrary keyword."
   (arbitrary-symbol-like generator/choose-keyword))
 
 (def coarbitrary-keyword
-  "Coarbitrary keyword."
   (coarbitrary-symbol-like generator/choose-keyword))
 
 (def arbitrary-uuid
